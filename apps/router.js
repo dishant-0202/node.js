@@ -1,18 +1,14 @@
 const express = require("express");
 const connection = require("./db");
-const router = express.Router()
+const router = express.Router();
 router.use(express.json());
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
 
-
-
+// ================= SIGNUP =================
 router.post("/signup", async (req, res) => {
-    const {
-        email,
-        password
-    } = req.body;
+    const { email, password } = req.body;
 
     if (!email || !password) {
         return res.status(400).json({
@@ -22,10 +18,8 @@ router.post("/signup", async (req, res) => {
     }
 
     try {
-        // Hash the password
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Insert user into database
         const sql = "INSERT INTO users (email, password) VALUES (?, ?)";
         connection.query(sql, [email, hashedPassword], (err, result) => {
             if (err) {
@@ -35,25 +29,19 @@ router.post("/signup", async (req, res) => {
                 });
             }
 
-            // Generate JWT token immediately after signup
-            const token = jwt.sign({
-                    id: result.insertId,
-                    email
-                }, // payload
-                "12454215475ewdfw", // secret key (change to strong secret)
-                {
-                    expiresIn: "1h"
-                } // token valid for 1 hour
+            const token = jwt.sign(
+                { id: result.insertId, email },
+                "12454215475ewdfw",
+                { expiresIn: "1h" }
             );
 
-            // Send response with token
             res.status(201).json({
                 success: true,
                 message: "User registered successfully",
-                token: token,
+                token,
                 user: {
                     id: result.insertId,
-                    email: email
+                    email
                 }
             });
         });
@@ -66,17 +54,10 @@ router.post("/signup", async (req, res) => {
 });
 
 
-
-
-
-
+// ================= SIGNIN =================
 router.post("/signin", (req, res) => {
-    const {
-        email,
-        password
-    } = req.body;
+    const { email, password } = req.body;
 
-    // Validation
     if (!email || !password) {
         return res.status(400).json({
             success: false,
@@ -84,7 +65,6 @@ router.post("/signin", (req, res) => {
         });
     }
 
-    // Check user in database
     const sql = "SELECT * FROM users WHERE email = ?";
     connection.query(sql, [email], async (err, result) => {
         if (err) {
@@ -94,7 +74,6 @@ router.post("/signin", (req, res) => {
             });
         }
 
-        // User not found
         if (result.length === 0) {
             return res.status(401).json({
                 success: false,
@@ -103,9 +82,8 @@ router.post("/signin", (req, res) => {
         }
 
         const user = result[0];
-
-        // Compare hashed password
         const isMatch = await bcrypt.compare(password, user.password);
+
         if (!isMatch) {
             return res.status(401).json({
                 success: false,
@@ -113,22 +91,16 @@ router.post("/signin", (req, res) => {
             });
         }
 
-        // Generate JWT token
-        const token = jwt.sign({
-                id: user.id,
-                email: user.email
-            }, // payload
-            process.env.JWT_SECRET || "YOUR_SECRET_KEY", // secret key
-            {
-                expiresIn: "1h"
-            } // token valid for 1 hour
+        const token = jwt.sign(
+            { id: user.id, email: user.email },
+            "12454215475ewdfw",
+            { expiresIn: "1h" }
         );
 
-        // Send success response with token
         res.status(200).json({
             success: true,
             message: "Signin successful",
-            token: token,
+            token,
             user: {
                 id: user.id,
                 email: user.email
@@ -138,8 +110,8 @@ router.post("/signin", (req, res) => {
 });
 
 
+// ================= LOGOUT =================
 router.post("/logout", (req, res) => {
-
     res.status(200).json({
         success: true,
         message: "Logged out successfully"
@@ -147,7 +119,5 @@ router.post("/logout", (req, res) => {
 });
 
 
-
-
-// export router
+// ================= EXPORT =================
 module.exports = router;
